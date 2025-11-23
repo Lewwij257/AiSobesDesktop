@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "26541640171",
+    "project_id": "aisobes",
+    "storage_bucket": "aisobes.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:26541640171:android:4331f4403e29a5b47271ae",
+        "android_client_info": {
+          "package_name": "com.example.aisobes"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBLBxiyiwRkNj1WrhkrmqUe--bM1HGqpPc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
