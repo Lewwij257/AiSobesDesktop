@@ -429,6 +429,21 @@ class _TemplateDetailsDialogState extends State<TemplateDetailsDialog> {
     );
   }
 
+  Future<String> _getUserName(String userId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+      if (doc.exists) {
+        return doc.data()?['NameAndSurname'] ?? userId;
+      }
+    } catch (e) {
+      // ничего не делаем
+    }
+    return userId; // если что-то пошло не так — вернём просто ID
+  }
+
   Future<void> _deleteInterviewWithAttempts() async {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
 
@@ -525,6 +540,8 @@ class _TemplateDetailsDialogState extends State<TemplateDetailsDialog> {
   }
 
   Future<void> _showUserAttempt(String userId) async {
+    final displayName = await _getUserName(userId); // ← получаем имя
+
     try {
       final attemptSnapshot = await FirebaseFirestore.instance
           .collection('attempts')
@@ -544,48 +561,76 @@ class _TemplateDetailsDialogState extends State<TemplateDetailsDialog> {
 
       final attemptData = attemptSnapshot.docs.first.data();
       final answers = (attemptData['answers'] as List<dynamic>?) ?? [];
+      final totalScore = attemptData['totalScore'] ?? '—';
 
       if (!mounted) return;
 
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text('Результат пользователя $userId'),
+          title: Text('Результат: $displayName'), // ← теперь с именем!
           content: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Общий балл: ${attemptData['totalScore'] ?? '—'}'),
-                Text(
-                  'Завершено: ${attemptData['completedAt'] != null ? (attemptData['completedAt'] as Timestamp).toDate().toString() : 'Не завершено'}',
-                ),
-                const SizedBox(height: 16),
                 const Text(
-                  'Ответы:',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  'Ответы пользователя:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
+                const SizedBox(height: 12),
                 ...answers.map((a) {
                   final map = a as Map<String, dynamic>;
                   return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'В: ${map['question']}',
-                          style: const TextStyle(fontWeight: FontWeight.w500),
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        Text('Ответ: ${map['Answer'] ?? '—'}'),
-                        Text('Ожидалось: ${map['expectedAnswer'] ?? '—'}'),
+                        const SizedBox(height: 4),
+                        Text('Ответ: ${map['answer'] ?? '—'}'),
                         Text(
-                          'Оценка: ${map['score'] ?? '—'}',
-                          style: TextStyle(color: Colors.blue[700]),
+                          'Ожидалось: ${map['expectedAnswer'] ?? '—'}',
+                          style: TextStyle(color: Colors.grey[700]),
                         ),
                         const Divider(),
                       ],
                     ),
                   );
                 }).toList(),
+                const SizedBox(height: 20),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue[300]!),
+                  ),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Финальная оценка',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '$totalScore',
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue[800],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -600,7 +645,7 @@ class _TemplateDetailsDialogState extends State<TemplateDetailsDialog> {
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Ошибка загрузки попытки: $e')));
+      ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
     }
   }
 
@@ -669,7 +714,13 @@ class _TemplateDetailsDialogState extends State<TemplateDetailsDialog> {
               ...assignedUsers
                   .map(
                     (userId) => ListTile(
-                      title: Text(userId),
+                      title: FutureBuilder<String>(
+                        future: _getUserName(userId),
+                        builder: (context, snapshot) {
+                          final name = snapshot.data ?? userId;
+                          return Text('$name ($userId)');
+                        },
+                      ),
                       trailing: IconButton(
                         icon: const Icon(
                           Icons.remove_circle,
